@@ -10,19 +10,23 @@ import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import com.example.blescanner.ui.theme.BleScannerTheme
+import java.util.Locale
 import kotlin.reflect.KProperty
 
 class MainActivity : ComponentActivity() {
@@ -51,6 +55,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onResume() {
         super.onResume()
 
@@ -80,6 +85,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun startBLEScan()
     {
         Log.v(TAG, "Start BLEScan")
@@ -100,6 +106,7 @@ class MainActivity : ComponentActivity() {
 
         val scanSettings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setLegacy(false) // Enable extended scanning
             .build()
 
         Log.v(TAG, "Start scan...")
@@ -124,10 +131,10 @@ class MainActivity : ComponentActivity() {
         object : ScanCallback(){
             override fun onScanResult(callbackType: Int, result: ScanResult?) {
                 //super.onScanResult(callbackType, result)
-                Log.v(TAG, "onScanResult")
+                //Log.v(TAG, "onScanResult")
 
                 val bluetoothDevice = result?.device
-                val bluetoothData = result?.scanRecord
+                val scanRecord = result?.scanRecord
                 if (bluetoothDevice != null)
                 {
                     if (ActivityCompat.checkSelfPermission(
@@ -138,8 +145,24 @@ class MainActivity : ComponentActivity() {
                         Log.v(TAG, "Need permission BLUETOOTH_CONNECT")
                         return
                     }
-                    if (bluetoothData != null) {
-                        Log.v(TAG, "Device Name ${bluetoothDevice.name} Device UUIDS ${bluetoothDevice.uuids} Device Address ${bluetoothDevice.address} Record ${bluetoothData.manufacturerSpecificData}")
+                    if (bluetoothDevice != null && scanRecord != null) {
+                        val manufacturerData = scanRecord.manufacturerSpecificData
+                        val advertisedData = scanRecord.bytes // Raw advertised data
+                        // Example: Parse manufacturer data (if it exists)
+                        if (manufacturerData != null) {
+                            val manufacturerId = manufacturerData.keyAt(0)
+                            Log.v(TAG, "ID: ${manufacturerId.toString(16).uppercase()}")
+                            val manufacturerBytes = manufacturerData.get(manufacturerId)
+                            // Parse and use the manufacturer-specific data
+                            if (manufacturerBytes == byteArrayOf(0x00, 0x07, 0x00, 0x07))
+                            {
+                                Log.v(TAG, "ExtAdvData: ${advertisedData.toString()}")
+                                Log.v(TAG, "Device Name ${bluetoothDevice.name} Device UUIDS ${bluetoothDevice.uuids} Device Address ${bluetoothDevice.address}")
+                            }
+                        }
+
+                        //Log.v(TAG, "Device Name ${bluetoothDevice.name} Device UUIDS ${bluetoothDevice.uuids} Device Address ${bluetoothDevice.address}")
+
                     }
                 }
 
