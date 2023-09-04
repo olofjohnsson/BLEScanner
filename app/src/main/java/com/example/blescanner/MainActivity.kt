@@ -3,6 +3,7 @@ package com.example.blescanner
 import android.Manifest
 import android.Manifest.permission.BLUETOOTH_SCAN
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -93,12 +94,9 @@ class MainActivity : ComponentActivity() {
         val byteArray = ByteArray(2)
 
         val manufacturerId = 0x0707 // Replace with the desired manufacturer ID
-        val manufacturerData = byteArrayOf(0x00, 0x07, 0x00, 0x07)
 
         val scanFilter = ScanFilter.Builder()
-            //.setDeviceAddress("F3:33:30:F8:63:C8")
-            //.setDeviceName("B4E55336235030AEE9")
-            //.setManufacturerData(manufacturerId, manufacturerData)
+            .setManufacturerData(manufacturerId, byteArrayOf())
             .build()
 
         val scanFilters:MutableList<ScanFilter> = mutableListOf()
@@ -130,42 +128,20 @@ class MainActivity : ComponentActivity() {
     private val bleScanCallback : ScanCallback by lazy {
         object : ScanCallback(){
             override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                //super.onScanResult(callbackType, result)
+                super.onScanResult(callbackType, result)
                 //Log.v(TAG, "onScanResult")
 
-                val bluetoothDevice = result?.device
-                val scanRecord = result?.scanRecord
-                if (bluetoothDevice != null)
-                {
-                    if (ActivityCompat.checkSelfPermission(
-                            this@MainActivity,
-                            Manifest.permission.BLUETOOTH_CONNECT
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        Log.v(TAG, "Need permission BLUETOOTH_CONNECT")
-                        return
-                    }
-                    if (bluetoothDevice != null && scanRecord != null) {
-                        val manufacturerData = scanRecord.manufacturerSpecificData
-                        val advertisedData = scanRecord.bytes // Raw advertised data
-                        // Example: Parse manufacturer data (if it exists)
-                        if (manufacturerData != null) {
-                            val manufacturerId = manufacturerData.keyAt(0)
-                            Log.v(TAG, "ID: ${manufacturerId.toString(16).uppercase()}")
-                            val manufacturerBytes = manufacturerData.get(manufacturerId)
-                            // Parse and use the manufacturer-specific data
-                            if (manufacturerBytes == byteArrayOf(0x00, 0x07, 0x00, 0x07))
-                            {
-                                Log.v(TAG, "ExtAdvData: ${advertisedData.toString()}")
-                                Log.v(TAG, "Device Name ${bluetoothDevice.name} Device UUIDS ${bluetoothDevice.uuids} Device Address ${bluetoothDevice.address}")
-                            }
+                result?.let { scanResult ->
+                    val device: BluetoothDevice = scanResult.device
+                    val advertisementData: ByteArray? = scanResult.scanRecord?.bytes
+                    Log.v(TAG, "device: ${device.toString()}")
+                    if (advertisementData != null) {
+                        val octetSequence = advertisementData.joinToString(" ") { byte ->
+                            String.format("%02X", byte)
                         }
-
-                        //Log.v(TAG, "Device Name ${bluetoothDevice.name} Device UUIDS ${bluetoothDevice.uuids} Device Address ${bluetoothDevice.address}")
-
+                        Log.v(TAG, "ID: $octetSequence")
                     }
                 }
-
             }
         }
     }
